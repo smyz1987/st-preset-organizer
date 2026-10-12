@@ -1,6 +1,6 @@
 {
     "display_name": "预设分组管家",
-    "version": "1.2.3",
+    "version": "1.2.4",
     "description": "自动检测每个预设适配的模型（Claude/Gemini/DeepSeek/Claude+Gemini/多模型通用等），支持自定义标签、常用预设区、同名不同版本折叠。",
     "author": "Community",
     "homePage": "https://github.com/smyz1987/st-preset-organizer",

@@ -338,22 +338,32 @@ function startTagEdit(name, li, isFav = false) {
     li.querySelector('.stpo-item-main')?.appendChild(input);
     input.focus();
     input.select();
+    let committed = false;
+    const commit = () => {
+        if (committed) return;
+        committed = true;
+        const st = loadState();
+        st.tags = st.tags || {};
+        const v = input.value.trim();
+        if (v) st.tags[name] = v;
+        else delete st.tags[name];
+        saveState();
+        scanPresets();
+        render();
+    };
     input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            const st = loadState();
-            st.tags = st.tags || {};
-            const v = input.value.trim();
-            if (v) st.tags[name] = v;
-            else delete st.tags[name];
-            saveState();
-            scanPresets();
-            render();
-        } else if (e.key === 'Escape') {
+        // 兼容手机端虚拟键盘：部分输入法回车键的 e.key 不是 'Enter'，用 keyCode 兜底
+        if (e.key === 'Enter' || e.keyCode === 13) {
+            commit();
+        } else if (e.key === 'Escape' || e.keyCode === 27) {
+            committed = true; // 取消时不保存，防止随后的 blur 误存
             render();
         }
         e.stopPropagation();
     });
     input.addEventListener('click', (e) => e.stopPropagation());
+    // 失焦兜底：手机端虚拟键盘回车可能不触发 keydown，失焦时同样保存
+    input.addEventListener('blur', commit);
 }
 
 function buildFavRow(name) {
