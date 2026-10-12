@@ -461,7 +461,8 @@ function buildGroup(cat) {
     header.className = 'stpo-group-header';
     const collapsed = getCollapsedCats()[cat];
     header.innerHTML = `<span class="stpo-caret">${collapsed ? '▸' : '▾'}</span><span class="stpo-dot" style="background:${CATEGORY_COLOR[cat]}"></span><span class="stpo-group-name">${CATEGORY_LABEL[cat]}</span><span class="stpo-count">${items.length}</span>`;
-    header.addEventListener('click', () => toggleCollapsedCat(cat));
+    // stopPropagation：防止 render() 重建 DOM 后旧节点脱离面板，被 document 委托误判为"外部点击"而关闭面板
+    header.addEventListener('click', (e) => { e.stopPropagation(); toggleCollapsedCat(cat); });
     wrap.appendChild(header);
 
     if (collapsed) return wrap;
@@ -488,7 +489,7 @@ function buildGroup(cat) {
             const head = document.createElement('div');
             head.className = 'stpo-base-head';
             head.innerHTML = `<span class="stpo-caret">${baseCollapsed ? '▸' : '▾'}</span><span class="stpo-base-name">${escHtml(val[0].base)}</span><span class="stpo-count">${val.length} 个版本</span>`;
-            head.addEventListener('click', () => toggleCollapsedBase(key));
+            head.addEventListener('click', (e) => { e.stopPropagation(); toggleCollapsedBase(key); });
             li.appendChild(head);
             if (!baseCollapsed) {
                 const sub = document.createElement('ul');
@@ -580,7 +581,9 @@ function initPanel() {
             if (panelVisible) { scanPresets(); render(); }
             return;
         }
-        if (panelVisible && !$(e.target).closest('#stpo-panel').length && !$(e.target).closest('#stpo-toggle').length) {
+        // 面板内交互（如点击分组/条目）触发 render() 后，原 e.target 会从 DOM 移除（isConnected=false），
+        // 此时不得判为"外部点击"关闭面板；只有 target 仍连接在文档中且不在面板/按钮内才算外部点击
+        if (panelVisible && e.target.isConnected && !$(e.target).closest('#stpo-panel').length && !$(e.target).closest('#stpo-toggle').length) {
             panelVisible = false;
             $('#stpo-panel').removeClass('stpo-show');
         }
