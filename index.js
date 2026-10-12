@@ -371,7 +371,9 @@ function buildFavRow(name) {
     li.className = 'stpo-item stpo-fav-item';
     const main = document.createElement('div');
     main.className = 'stpo-item-main';
-    main.innerHTML = `<span class="stpo-star">★</span><span class="stpo-name">${escHtml(name)}</span>`;
+    const tag = getTags()[name] || '';
+    const tagHtml = tag ? `<span class="stpo-tag" title="自定义标签">${escHtml(tag)}</span>` : '';
+    main.innerHTML = `<span class="stpo-star">★</span><span class="stpo-name">${escHtml(name)}</span>${tagHtml}`;
     main.addEventListener('click', () => {
         const index = openai_setting_names?.[name];
         if (index !== undefined) applyPreset(index, name);
