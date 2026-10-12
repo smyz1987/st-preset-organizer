@@ -648,11 +648,23 @@ const STPO_CSS = `
     border: 1px solid var(--main-border-color, #3a3a44);
     border-radius: 10px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
-    z-index: 99999;
+    z-index: 2147483647;
     flex-direction: column;
     overflow: hidden;
     font-size: 13px;
     color: var(--main-font-color, #ddd);
+}
+/* 手机端：面板贴顶全宽，避免顶部被浏览器工具栏/顶部栏遮挡（dvh 按实际可视区计算） */
+@media (max-width: 768px) {
+    #stpo-panel {
+        top: 8px;
+        right: 8px;
+        left: 8px;
+        width: auto;
+        transform: none;
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
+    }
 }
 #stpo-panel.stpo-show { display: flex; }
 .stpo-header {
