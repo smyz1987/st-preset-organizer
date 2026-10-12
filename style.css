@@ -1,0 +1,287 @@
+/* ===== 预设分组管家 ===== */
+.stpo-toggle-btn {
+    width: 24px;
+    height: 24px;
+    padding: 3px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: transform 0.15s ease;
+}
+
+.stpo-toggle-btn:hover {
+    transform: scale(1.12);
+}
+
+.stpo-toggle-btn svg {
+    display: block;
+}
+
+#stpo-panel {
+    display: none;
+    position: fixed;
+    top: 50%;
+    right: 16px;
+    transform: translateY(-50%);
+    width: min(430px, calc(100vw - 40px));
+    max-height: 82vh;
+    background: var(--main-surface, #1e1e24);
+    border: 1px solid var(--main-border-color, #3a3a44);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-size: 13px;
+    color: var(--main-font-color, #ddd);
+}
+
+#stpo-panel.stpo-show {
+    display: flex;
+}
+
+/* 头部 */
+.stpo-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--main-border-color, #333);
+    flex: 0 0 auto;
+}
+
+.stpo-title {
+    font-weight: 700;
+    white-space: nowrap;
+    margin-right: 4px;
+}
+
+#stpo-search {
+    flex: 1;
+    min-width: 0;
+    background: var(--main-surface, #2a2a33);
+    color: var(--main-font-color, #eee);
+    border: 1px solid var(--main-border-color, #444);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 13px;
+}
+
+/* 常用区 */
+.stpo-fav {
+    flex: 0 0 auto;
+    max-height: 30%;
+    overflow-y: auto;
+    padding: 6px 8px;
+    border-bottom: 1px dashed var(--main-border-color, #333);
+}
+
+.stpo-fav-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: #f5c518;
+}
+
+.stpo-hint {
+    font-weight: 400;
+    opacity: 0.6;
+    font-size: 11px;
+}
+
+.stpo-empty {
+    padding: 8px;
+    opacity: 0.5;
+    font-size: 12px;
+}
+
+/* 列表 */
+.stpo-groups-wrap {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 4px 8px 8px;
+}
+
+.stpo-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.stpo-sub {
+    padding-left: 14px;
+}
+
+.stpo-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.stpo-item:hover {
+    background: var(--hover-surface, rgba(255, 255, 255, 0.06));
+}
+
+.stpo-item.stpo-current .stpo-name {
+    color: #4cd9a8;
+    font-weight: 700;
+}
+
+.stpo-item-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+}
+
+.stpo-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stpo-badge {
+    flex: 0 0 auto;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    white-space: nowrap;
+}
+
+.stpo-tag {
+    flex: 0 0 auto;
+    font-size: 10px;
+    background: #f5c51833;
+    color: #f5c518;
+    padding: 1px 6px;
+    border-radius: 8px;
+    white-space: nowrap;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stpo-item-ops {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 2px;
+    opacity: 0.35;
+}
+
+.stpo-item:hover .stpo-item-ops {
+    opacity: 1;
+}
+
+.stpo-btn {
+    background: none;
+    border: none;
+    color: var(--main-font-color, #ddd);
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.stpo-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.stpo-btn-star { color: #8a919e; }
+.stpo-btn-star-on { color: #f5c518; }
+.stpo-btn-up, .stpo-btn-down { color: #7aa2f7; }
+.stpo-btn-tag { color: #b48aea; }
+
+/* 分组 */
+.stpo-group {
+    margin-bottom: 6px;
+}
+
+.stpo-group-header, .stpo-base-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.stpo-group-header:hover, .stpo-base-head:hover {
+    background: var(--hover-surface, rgba(255, 255, 255, 0.06));
+}
+
+.stpo-caret {
+    width: 12px;
+    text-align: center;
+    font-size: 10px;
+    opacity: 0.7;
+}
+
+.stpo-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+.stpo-count {
+    margin-left: auto;
+    font-size: 11px;
+    opacity: 0.5;
+    font-weight: 400;
+}
+
+.stpo-base-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 标签输入 */
+.stpo-tag-input {
+    flex: 1;
+    min-width: 0;
+    background: var(--main-surface, #2a2a33);
+    color: var(--main-font-color, #eee);
+    border: 1px solid #f5c51888;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 12px;
+}
+
+/* 分类徽章可点击修改 */
+.stpo-badge-edit {
+    cursor: pointer;
+    border: 1px dashed currentColor;
+}
+
+.stpo-badge-edit:hover {
+    filter: brightness(1.25);
+}
+
+.stpo-cat-select {
+    flex: 0 0 auto;
+    font-size: 11px;
+    background: var(--main-surface, #2a2a33);
+    color: var(--main-font-color, #eee);
+    border: 1px solid var(--main-border-color, #555);
+    border-radius: 8px;
+    padding: 1px 4px;
+    max-width: 150px;
+}
+
+/* 底部 */
+.stpo-foot {
+    padding: 6px 2px 2px;
+    font-size: 10px;
+    opacity: 0.45;
+    text-align: center;
+}
