@@ -368,17 +368,18 @@ function buildFavRow(name) {
     });
     const ops = document.createElement('div');
     ops.className = 'stpo-item-ops';
-    const mkBtn = (cls, title, fn) => {
+    const mkBtn = (icon, cls, title, fn) => {
         const b = document.createElement('button');
         b.className = 'stpo-btn ' + cls;
+        b.textContent = icon;
         b.title = title;
         b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
         return b;
     };
-    ops.appendChild(mkBtn('stpo-btn-up', '上移', () => moveFav(name, -1)));
-    ops.appendChild(mkBtn('stpo-btn-down', '下移', () => moveFav(name, 1)));
-    ops.appendChild(mkBtn('stpo-btn-tag', '编辑标签', () => startTagEdit(name, li)));
-    ops.appendChild(mkBtn('stpo-btn-star-off', '移出常用', () => toggleFav(name)));
+    ops.appendChild(mkBtn('↑', 'stpo-btn-up', '上移', () => moveFav(name, -1)));
+    ops.appendChild(mkBtn('↓', 'stpo-btn-down', '下移', () => moveFav(name, 1)));
+    ops.appendChild(mkBtn('✎', 'stpo-btn-tag', '编辑标签', () => startTagEdit(name, li)));
+    ops.appendChild(mkBtn('☆', 'stpo-btn-star-off', '移出常用', () => toggleFav(name)));
     li.appendChild(main);
     li.appendChild(ops);
     return li;
@@ -432,16 +433,18 @@ function buildPresetRow(item) {
 
     const ops = document.createElement('div');
     ops.className = 'stpo-item-ops';
-    const mkBtn = (cls, title, fn) => {
+    const mkBtn = (icon, cls, title, fn) => {
         const b = document.createElement('button');
         b.className = 'stpo-btn ' + cls;
+        b.textContent = icon;
         b.title = title;
         b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
         return b;
     };
     const inFav = getFavorites().includes(item.name);
-    ops.appendChild(mkBtn(inFav ? 'stpo-btn-star-on' : 'stpo-btn-star', inFav ? '移出常用' : '加入常用', () => toggleFav(item.name)));
-    ops.appendChild(mkBtn('stpo-btn-tag', '编辑标签', () => startTagEdit(item.name, li)));
+    ops.appendChild(mkBtn(inFav ? '★' : '☆', inFav ? 'stpo-btn-star-on' : 'stpo-btn-star', inFav ? '移出常用' : '加入常用', () => toggleFav(item.name)));
+    ops.appendChild(mkBtn('⚙', 'stpo-btn-cat', '修改分类', () => showCategorySelect(item, li)));
+    ops.appendChild(mkBtn('✎', 'stpo-btn-tag', '编辑标签', () => startTagEdit(item.name, li)));
     li.appendChild(main);
     li.appendChild(ops);
     return li;
@@ -547,6 +550,7 @@ function initPanel() {
             <button id="stpo-refresh" class="stpo-btn stpo-btn-ghost" title="重新扫描">↻</button>
             <button id="stpo-close" class="stpo-btn stpo-btn-ghost" title="关闭">✕</button>
         </div>
+        <div class="stpo-op-hint">点 ⚙ 改分类 · 点 ☆/★ 收藏到常用 · 点 ✎ 编辑标签</div>
         <div class="stpo-fav">
             <div class="stpo-fav-title">★ 常用预设 <span class="stpo-hint">（点击即加载）</span></div>
             <ul id="stpo-fav-list" class="stpo-list"></ul>
@@ -712,8 +716,15 @@ const STPO_CSS = `
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.stpo-item-ops { flex: 0 0 auto; display: flex; gap: 2px; opacity: 0.35; }
-.stpo-item:hover .stpo-item-ops { opacity: 1; }
+.stpo-op-hint {
+    padding: 4px 10px;
+    font-size: 11px;
+    opacity: 0.7;
+    border-bottom: 1px dashed var(--main-border-color, #333);
+    flex: 0 0 auto;
+    color: var(--main-font-color, #ddd);
+}
+.stpo-item-ops { flex: 0 0 auto; display: flex; gap: 3px; opacity: 1; align-items: center; }
 .stpo-btn {
     background: none;
     border: none;
@@ -721,14 +732,18 @@ const STPO_CSS = `
     cursor: pointer;
     padding: 2px 5px;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1;
+    min-width: 18px;
+    text-align: center;
 }
 .stpo-btn:hover { background: rgba(255, 255, 255, 0.12); }
-.stpo-btn-star { color: #8a919e; }
+.stpo-btn-star { color: #c8cdd6; }
 .stpo-btn-star-on { color: #f5c518; }
+.stpo-btn-cat { color: #7aa2f7; }
 .stpo-btn-up, .stpo-btn-down { color: #7aa2f7; }
 .stpo-btn-tag { color: #b48aea; }
+.stpo-btn-star-off { color: #c8cdd6; }
 .stpo-group { margin-bottom: 6px; }
 .stpo-group-header, .stpo-base-head {
     display: flex;
