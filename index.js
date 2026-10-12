@@ -31,7 +31,7 @@ const CONTENT_PATTERNS = [
 ];
 
 // 检测引擎版本：升级检测逻辑时 +1，触发一次全量重扫迁移
-const DETECT_VERSION = 2;
+const DETECT_VERSION = 4;
 
 // 主类别顺序（渲染顺序）
 const CATEGORY_ORDER = ['claude', 'gemini', 'deepseek', 'claude_gemini', 'openai', 'multi', 'unknown'];
@@ -57,7 +57,7 @@ const CATEGORY_COLOR = {
 };
 
 function collectText(preset) {
-    // 收集预设内所有文本信号：优先 prompts 数组（1.19+ 内容主体），再补各文本字段
+    // 收集预设内所有文本信号：prompts 数组（含 disabled 条目——作者话/校准条目常写明适配模型）+ 各文本字段
     const parts = [];
     const pushStr = (v) => {
         if (typeof v === 'string' && v) parts.push(v);
@@ -65,7 +65,8 @@ function collectText(preset) {
     const prompts = preset.prompts;
     if (Array.isArray(prompts)) {
         for (const pm of prompts) {
-            if (pm && typeof pm === 'object' && pm.enabled !== false) {
+            if (pm && typeof pm === 'object') {
+                // 不跳过 disabled：禁用条目（如 Calibration 校准、作者说明）同样暴露模型取向
                 const c = pm.content || pm.prompt || pm.text || '';
                 pushStr(String(c));
             }
@@ -81,6 +82,7 @@ function collectText(preset) {
     pushStr(preset.post_history_instructions);
     pushStr(preset.main_prompt);
     pushStr(preset.new_chat_prompt);
+    pushStr(preset.description);
     pushStr(preset.extensions?.prompt);
     pushStr(preset.extensions?.jailbreak);
     return parts.join('\n');
@@ -92,49 +94,66 @@ function detectModelFit(name, preset) {
     const text = collectText(preset);
 
     const hits = { claude: 0, gemini: 0, deepseek: 0, openai: 0 };
+    const why = [];
 
-    // 1) 文件名：明确出现模型标记才 +3（kemini=Gemini、klaude/克劳德=Claude）
+    // 1) 文件名：明确出现模型标记 = 作者标注的适配模型，最高优先（kemini=Gemini、klaude/克劳德=Claude、ds/dsvN/ds预设=DeepSeek）
+    const nameCats = [];
     for (const rule of NAME_RULES) {
-        if (rule.re.test(nameLower)) hits[rule.cat] += 3;
+        if (rule.re.test(nameLower)) { hits[rule.cat] += 3; nameCats.push(rule.cat); why.push('文件名[' + rule.cat + ']'); }
     }
 
-    // 2) chat_completion_source +2
-    if (source === 'claude') hits.claude += 2;
-    else if (source === 'openai') hits.openai += 2;
-    // source=custom 不做直接加分，看 custom_model（用户真实配置）
+    // 2) 配置意图：use_*_sysprompt 开关（预设保存/使用时的系统提示模板取向）
+    const sysFlags = [
+        { cat: 'claude', val: preset.claude_use_sysprompt },
+        { cat: 'gemini', val: preset.use_makersuite_sysprompt },
+        { cat: 'openai', val: preset.openai_use_sysprompt },
+    ];
+    for (const f of sysFlags) {
+        if (f.val === true) { hits[f.cat] += 3; why.push('配置[use_' + f.cat + '_sysprompt]'); }
+    }
 
-    // 3) custom_model（source=custom 时的真实模型配置，+3；排除默认占位）
+    // 3) chat_completion_source（弱于名字/配置意图）
+    if (source === 'claude' && hits.claude < 3) { hits.claude += 2; why.push('source=claude'); }
+    else if (source === 'openai' && hits.openai < 3) { hits.openai += 2; why.push('source=openai'); }
+
+    // 4) custom_model（source=custom 时的真实模型配置，+3；排除默认占位）
     const cm = String(preset.custom_model || '').toLowerCase().trim();
     if (source === 'custom' && cm && cm !== 'gpt-4-turbo') {
         for (const rule of NAME_RULES) {
-            if (rule.re.test(cm)) { hits[rule.cat] += 3; break; }
+            if (rule.re.test(cm)) { hits[rule.cat] += 3; why.push('custom_model[' + rule.cat + ']=' + cm); break; }
         }
     }
 
-    // 4) prompts 全文 + 各文本字段：模型关键词弱信号 +2（封顶 2，防长文刷分）
+    // 5) 内容全文（prompts 含 disabled + 各文本字段）：模型关键词弱信号 +2（封顶 2，防长文刷分）
     if (text) {
         for (const rule of CONTENT_PATTERNS) {
             const m = text.match(rule.re);
-            if (m) hits[rule.cat] += Math.min(m.length, 2);
+            if (m) { hits[rule.cat] += Math.min(m.length, 2); why.push('内容[' + rule.cat + ']'); }
         }
     }
 
-    // 决策：先强信号（>=3），再弱信号（>=1）
-    const strong = Object.entries(hits).filter(([, v]) => v >= 3).map(([k]) => k);
-    const weak = Object.entries(hits).filter(([, v]) => v >= 1).map(([k]) => k);
-
+    // 决策：名字强信号优先（作者标注 > 当前配置 > 内容推断）
     let category;
-    if (strong.length >= 3) category = 'multi';
-    else if (strong.length === 2 && strong.includes('claude') && strong.includes('gemini')) category = 'claude_gemini';
-    else if (strong.length === 2) category = 'multi';
-    else if (strong.length === 1) category = strong[0];
-    else if (weak.length >= 3) category = 'multi';
-    else if (weak.length === 2 && weak.includes('claude') && weak.includes('gemini')) category = 'claude_gemini';
-    else if (weak.length === 2) category = 'multi';
-    else if (weak.length === 1) category = weak[0];
-    else category = 'unknown';
+    if (nameCats.length >= 3) category = 'multi';
+    else if (nameCats.length === 2) {
+        category = (nameCats.includes('claude') && nameCats.includes('gemini')) ? 'claude_gemini' : 'multi';
+    }
+    else if (nameCats.length === 1) category = nameCats[0];
+    else {
+        const strong = Object.entries(hits).filter(([, v]) => v >= 3).map(([k]) => k);
+        const weak = Object.entries(hits).filter(([, v]) => v >= 1).map(([k]) => k);
+        if (strong.length >= 3) category = 'multi';
+        else if (strong.length === 2 && strong.includes('claude') && strong.includes('gemini')) category = 'claude_gemini';
+        else if (strong.length === 2) category = 'multi';
+        else if (strong.length === 1) category = strong[0];
+        else if (weak.length >= 3) category = 'multi';
+        else if (weak.length === 2 && weak.includes('claude') && weak.includes('gemini')) category = 'claude_gemini';
+        else if (weak.length === 2) category = 'multi';
+        else if (weak.length === 1) category = weak[0];
+        else category = 'unknown';
+    }
 
-    return { category, label: CATEGORY_LABEL[category], color: CATEGORY_COLOR[category], hits };
+    return { category, label: CATEGORY_LABEL[category], color: CATEGORY_COLOR[category], hits, why };
 }
 
 // ---------------- 版本拆分 ----------------
@@ -543,7 +562,20 @@ function initPanel() {
     $('#stpo-close').on('click', () => { panelVisible = false; $('#stpo-panel').removeClass('stpo-show'); });
     $('#stpo-refresh').on('click', () => { scanPresets(); render(); });
     $('#stpo-search').on('input', render);
-    $(document).on('click', (e) => {
+    // 关闭/切换/外部点击 全部走 document 委托，元素被重建也不失效
+    $(document).off('click.stpo').on('click.stpo', (e) => {
+        const t = e.target;
+        if (t.closest && t.closest('#stpo-close')) {
+            panelVisible = false;
+            $('#stpo-panel').removeClass('stpo-show');
+            return;
+        }
+        if (t.closest && t.closest('#stpo-toggle')) {
+            panelVisible = !panelVisible;
+            $('#stpo-panel').toggleClass('stpo-show', panelVisible);
+            if (panelVisible) { scanPresets(); render(); }
+            return;
+        }
         if (panelVisible && !$(e.target).closest('#stpo-panel').length && !$(e.target).closest('#stpo-toggle').length) {
             panelVisible = false;
             $('#stpo-panel').removeClass('stpo-show');
@@ -572,11 +604,7 @@ function addToggleButton() {
         <path d="M12 4.6 C13.4 2.4 16.4 2 17.4 3.2 C15 3.2 13 3.9 12 4.6 Z" fill="#9db39a"/>
         <path d="M12 4.2 C11.6 2.8 11 1.8 10 1.4 C11.6 1.6 11.8 2.6 12 4.2 Z" fill="#aac0a7"/>
     </svg>`;
-    btn.addEventListener('click', () => {
-        panelVisible = !panelVisible;
-        $('#stpo-panel').toggleClass('stpo-show', panelVisible);
-        if (panelVisible) { scanPresets(); render(); }
-    });
+    // 开关逻辑统一走 document 委托（initPanel 里绑定），避免双份代码/重建导致的事件叠加
     host.append(btn);
 }
 
@@ -585,10 +613,30 @@ function init() {
         setTimeout(init, 1000);
         return;
     }
-    // 防御：清除页面中任何残留的旧版面板/按钮（防止旧代码与新代码同时加载造成双面板）
-    document.querySelectorAll('#stpo-panel, #stpo-toggle').forEach((e) => e.remove());
+    // 防双载：同一页面两份 JS（缓存旧版 + 新版）同时执行时，只允许一份真正初始化，
+    // 并强制清除全部残留节点（无论旧版用的什么 ID 都尝试移除）
+    const STPO_IDS = ['#stpo-panel', '#stpo-toggle', '#stpo-fav-list', '#stpo-groups'];
+    document.querySelectorAll(STPO_IDS.join(',')).forEach((e) => e.remove());
+    document.querySelectorAll('[id*="stpo-"][id*="panel"], [id*="preset-organizer"], .stpo-panel, .stpo-toggle').forEach((e) => e.remove());
+    if (window.__stpoLoaded) {
+        // 第二份代码：不再重复建面板，但兜底修复可能存在的旧残留
+        if (!document.querySelector('#stpo-panel')) { initPanel(); addToggleButton(); }
+        return;
+    }
+    window.__stpoLoaded = true;
     initPanel();
     addToggleButton();
+
+    // MutationObserver 兜底：任何时刻出现第二个面板/按钮，立即移除多余的
+    if (!window.__stpoObserver) {
+        window.__stpoObserver = new MutationObserver(() => {
+            const panels = document.querySelectorAll('#stpo-panel');
+            for (let i = 1; i < panels.length; i++) panels[i].remove();
+            const toggles = document.querySelectorAll('#stpo-toggle');
+            for (let i = 1; i < toggles.length; i++) toggles[i].remove();
+        });
+        window.__stpoObserver.observe(document.body, { childList: true, subtree: true });
+    }
 }
 
 // 等酒馆设置加载完成
